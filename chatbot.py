@@ -7,6 +7,9 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters 
 import configparser 
 import logging 
+from ChatGPT_HKBU import ChatGPT
+
+gpt = None
 
 def main(): 
     # 配置日志记录，以便查看初始化和错误消息
@@ -17,6 +20,10 @@ def main():
     logging.info('INIT: 正在加载配置...') 
     config = configparser.ConfigParser() 
     config.read('config.ini') 
+
+    # 在配置加载后、注册 handlers 之前创建 ChatGPT 客户端
+    global gpt
+    gpt = ChatGPT(config)
 
     # 为您的机器人创建一个应用程序
     logging.info('INIT: 正在连接 Telegram 机器人...') 
@@ -30,12 +37,16 @@ def main():
     logging.info('INIT: 初始化完成！') 
     app.run_polling() 
 
-async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE): 
-    logging.info("UPDATE: " + str(update)) 
+async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # await update.message.reply_text(response)
+    logging.info("UPDATE: " + str(update))
+    loading_message = await update.message.reply_text('Thinking...')
 
-    # 将回显发送回客户端
-    text = update.message.text.upper() 
-    await update.message.reply_text(text) 
+    # send the user message to the ChatGPT client
+    response = gpt.submit(update.message.text)
+
+    # send the response to the Telegram box client
+    await loading_message.edit_text(response)
 
 if __name__ == '__main__': 
     main()
